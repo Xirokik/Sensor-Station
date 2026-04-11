@@ -1,11 +1,14 @@
 #include "app.h"
 
+#include "tim.h"
+
 #include "loop.h"
 #include "encoder_driver.h"
-#include "tim.h"
+#include "display.h"
 
 void app_init(void)
 {
+    display_init();
     encoder_init();
     loop_init();
 }
@@ -14,6 +17,7 @@ void app_step(void)
 {
     if (loop_take_step())
     {
+        display_step();
     }
 }
     

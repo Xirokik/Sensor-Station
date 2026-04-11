@@ -48,12 +48,17 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     modules/app.c
     modules/loop.c
     modules/encoder_driver.c
+    modules/display.c
+    libs/ssd1306/ssd1306.c
+    libs/ssd1306/ssd1306_fonts.c
+    libs/ssd1306/ssd1306_tests.c
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
     modules
+    libs/ssd1306
 )
 
 # Add project symbols (macros)
