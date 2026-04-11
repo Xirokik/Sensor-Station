@@ -1,9 +1,8 @@
 #include "app.h"
 
-#include <stdint.h>
-
 #include "loop.h"
 #include "encoder_driver.h"
+#include "tim.h"
 
 void app_init(void)
 {
@@ -13,9 +12,12 @@ void app_init(void)
 
 void app_step(void)
 {
-    if (is_step_ready())
+    if (loop_take_step())
     {
-        step_done();
     }
+}
     
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+    loop_on_period_elapsed(htim);
 }

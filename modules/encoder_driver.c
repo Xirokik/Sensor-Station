@@ -15,7 +15,6 @@
 #define ENCODER_BTN_PORT ENC_BTN_GPIO_Port
 #define ENCODER_BTN_PIN ENC_BTN_Pin
 
-static uint32_t enc, enc_raw;
 uint16_t encoder_init(void)
 {
 	__HAL_TIM_SET_AUTORELOAD(ENCODER_TIM, ENCODER_COUNTER_PERIOD);
@@ -25,8 +24,8 @@ uint16_t encoder_init(void)
 
 uint32_t encoder_get_pos(void)
 {
-	enc_raw =__HAL_TIM_GET_COUNTER(ENCODER_TIM);
-	enc = enc_raw >> ENCODER_SHIFT;
+	uint32_t enc_raw =__HAL_TIM_GET_COUNTER(ENCODER_TIM);
+	uint32_t enc = enc_raw >> ENCODER_SHIFT;
 	return enc;
 }
 

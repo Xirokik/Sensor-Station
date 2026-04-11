@@ -7,7 +7,6 @@
 
 #define LOOP_TIM &htim6
 
-static volatile bool step_ready = false;
 static volatile uint32_t all_steps;
 static uint32_t missed_steps;
 static uint32_t cur_step;
@@ -18,21 +17,22 @@ uint16_t loop_init(void)
 	return 0;
 }
 
-bool is_step_ready(void)
+bool loop_take_step(void)
 {
-	uint32_t diff = all_steps - cur_step;
+	uint32_t steps_snapshot = all_steps;
+	uint32_t diff = steps_snapshot - cur_step;
+	if (diff == 0)
+	{
+		return false;
+	}
+
 	if (diff > 1)
 	{
 		missed_steps += diff - 1;
 	}
 
-	cur_step = all_steps;
-	return step_ready;
-}
-
-void step_done(void)
-{
-	step_ready = false;
+	cur_step = steps_snapshot;
+	return true;
 }
 
 uint32_t loop_get_all_steps(void)
@@ -45,11 +45,10 @@ uint32_t loop_get_missed_steps(void)
 	return missed_steps;
 }
 
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+void loop_on_period_elapsed(TIM_HandleTypeDef *htim)
 {
     if(htim->Instance == (LOOP_TIM)->Instance)
     {
-        step_ready = true;
         all_steps++;
     }
 }
