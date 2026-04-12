@@ -5,6 +5,7 @@
 #include "stdbool.h"
 
 #define ENCODER_FLT_INIT 0x111
+#define ENCODER_POSITIONS 20U
 
 uint16_t encoder_init(void);
 
