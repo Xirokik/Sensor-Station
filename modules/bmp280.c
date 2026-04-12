@@ -2,16 +2,9 @@
 
 #include <stdint.h>
 
+#include "bmp280_regs.h"
 #include "bmp280_port.h"
 #include "stm32l4xx_hal.h"
-
-#define BMP280_REG_ID 0xD0
-#define BMP280_REG_RESET 0xE0
-#define BMP280_REG_STATUS 0xF3
-#define BMP280_REG_CALIB00 0x88
-#define BMP280_REG_CONFIG 0xF5
-#define BMP280_REG_CTRL_MEAS 0xF4
-#define BMP280_REG_PRESS_MSB 0xF7
 
 typedef struct
 {
@@ -32,26 +25,22 @@ typedef struct
 
 typedef struct
 {
-    
     uint8_t mode;
     bmp280_calib_data_t calib;
     uint8_t bmp_status;
-  
 } bmp280_t;
 
 bmp280_t bmp280;
 
-
-
 uint32_t bmp280_init(void)
 {
     uint8_t ret_val;
-    bmp280_port_read(BMP280_REG_ID, &ret_val, 1);
-    if (ret_val != 0x58)
+    bmp280_port_read(BMP280_REG_CHIP_ID, &ret_val, 1);
+    if (ret_val != BMP280_CHIP_ID)
     {
         return 1;
     }
-    uint8_t reset_val = 0xB6;
+    uint8_t reset_val = BMP280_RESET_VALUE;
     bmp280_port_write(BMP280_REG_RESET, &reset_val, 1);
 
     uint8_t status = 0;
@@ -62,7 +51,7 @@ uint32_t bmp280_init(void)
             return 2;
         }
     }
-    while (status & 0x01);
+    while (status & BMP280_STATUS_IM_UPDATE_Msk);
 
     uint8_t calib[24];
     bmp280_port_read(BMP280_REG_CALIB00, calib, 24);
@@ -85,7 +74,8 @@ uint32_t bmp280_init(void)
      * filter   = 0b010 -> IIR filter x4
      * spi3w_en = 0     -> 4-wire SPI
      */
-    uint8_t config = (0 << 5) | (2 << 2) | (0 << 0);
+    uint8_t config = BMP280_CONFIG_T_SB(BMP280_T_SB_0_5_MS) |
+                     BMP280_CONFIG_FILTER(BMP280_FILTER_X4);
 
     if (bmp280_port_write(BMP280_REG_CONFIG, &config, 1) != 0)
     {
@@ -98,19 +88,21 @@ uint32_t bmp280_init(void)
      * osrs_p = 011 -> pressure oversampling x4
      * mode   = 01  -> forced mode
      */
-    uint8_t ctrl_meas = (1 << 5) | (3 << 2) | (1 << 0);
+    uint8_t ctrl_meas = BMP280_CTRL_MEAS_OSRS_T(BMP280_OSRS_X1) |
+                        BMP280_CTRL_MEAS_OSRS_P(BMP280_OSRS_X4) |
+                        BMP280_MODE_FORCED;
 
     if (bmp280_port_write(BMP280_REG_CTRL_MEAS, &ctrl_meas, 1) != 0)
     {
         return 1;
     }
 
-    //HAL_Delay(100);
+    HAL_Delay(100);
 
     do
     {
         bmp280_port_read(BMP280_REG_STATUS, &status, 1);
-    } while (status & 0x08);
+    } while (status & BMP280_STATUS_MEASURING_Msk);
     uint8_t raw[6];
 
     bmp280_port_read(BMP280_REG_PRESS_MSB, raw, 6);
