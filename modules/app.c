@@ -17,7 +17,7 @@ void app_step(void)
 {
     if (loop_take_step())
     {
-        display_step();
+        //display_step();
     }
 }
     

@@ -71,6 +71,14 @@ void Error_Handler(void);
 #define TMS_GPIO_Port GPIOA
 #define TCK_Pin GPIO_PIN_14
 #define TCK_GPIO_Port GPIOA
+#define BMP_SCK_Pin GPIO_PIN_10
+#define BMP_SCK_GPIO_Port GPIOC
+#define BMP_MISO_Pin GPIO_PIN_11
+#define BMP_MISO_GPIO_Port GPIOC
+#define BMP_MOSI_Pin GPIO_PIN_12
+#define BMP_MOSI_GPIO_Port GPIOC
+#define BMP_NCS_Pin GPIO_PIN_2
+#define BMP_NCS_GPIO_Port GPIOD
 #define SWO_Pin GPIO_PIN_3
 #define SWO_GPIO_Port GPIOB
 
