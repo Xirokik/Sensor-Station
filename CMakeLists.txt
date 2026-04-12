@@ -49,6 +49,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     modules/loop.c
     modules/encoder_driver.c
     modules/display.c
+    modules/bmp280_port_stm32.c
+    modules/bmp280.c
     libs/ssd1306/ssd1306.c
     libs/ssd1306/ssd1306_fonts.c
     libs/ssd1306/ssd1306_tests.c
