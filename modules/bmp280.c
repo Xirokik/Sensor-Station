@@ -6,6 +6,9 @@
 #include "bmp280_port.h"
 #include "stm32l4xx_hal.h"
 
+#define BMP280_S32_t int32_t
+#define BMP280_U32_t uint32_t
+
 typedef struct
 {
     uint16_t dig_T1;
@@ -22,15 +25,22 @@ typedef struct
     int16_t dig_P9;
 } bmp280_calib_data_t;
 
-
 typedef struct
 {
     uint8_t mode;
     bmp280_calib_data_t calib;
     uint8_t bmp_status;
+    BMP280_S32_t t_fine;
+    BMP280_S32_t temp_raw;
+    BMP280_U32_t pres_raw;
+    float temp;
+    float pres;
 } bmp280_t;
 
 bmp280_t bmp280;
+
+static int32_t bmp280_calc_temp(uint32_t *t_fine, BMP280_S32_t adc_T);
+static uint32_t bmp280_calc_press(uint32_t t_fine, BMP280_S32_t adc_P);
 
 uint32_t bmp280_init(void)
 {
@@ -50,15 +60,14 @@ uint32_t bmp280_init(void)
         {
             return 2;
         }
-    }
-    while (status & BMP280_STATUS_IM_UPDATE_Msk);
+    } while (status & BMP280_STATUS_IM_UPDATE_Msk);
 
     uint8_t calib[24];
     bmp280_port_read(BMP280_REG_CALIB00, calib, 24);
 
     bmp280.calib.dig_T1 = (uint16_t)(calib[1] << 8 | calib[0]);
     bmp280.calib.dig_T2 = (int16_t)(calib[3] << 8 | calib[2]);
-    bmp280.calib.dig_T3 = (int16_t)(calib[5] << 8 | calib[4]); 
+    bmp280.calib.dig_T3 = (int16_t)(calib[5] << 8 | calib[4]);
     bmp280.calib.dig_P1 = (uint16_t)(calib[7] << 8 | calib[6]);
     bmp280.calib.dig_P2 = (int16_t)(calib[9] << 8 | calib[8]);
     bmp280.calib.dig_P3 = (int16_t)(calib[11] << 8 | calib[10]);
@@ -104,16 +113,58 @@ uint32_t bmp280_init(void)
         bmp280_port_read(BMP280_REG_STATUS, &status, 1);
     } while (status & BMP280_STATUS_MEASURING_Msk);
     uint8_t raw[6];
-
     bmp280_port_read(BMP280_REG_PRESS_MSB, raw, 6);
 
     int32_t adc_P = (int32_t)(((uint32_t)raw[0] << 12) |
-                              ((uint32_t)raw[1] << 4)  |
+                              ((uint32_t)raw[1] << 4) |
                               ((uint32_t)raw[2] >> 4));
 
     int32_t adc_T = (int32_t)(((uint32_t)raw[3] << 12) |
-                              ((uint32_t)raw[4] << 4)  |
+                              ((uint32_t)raw[4] << 4) |
                               ((uint32_t)raw[5] >> 4));
-
+    uint32_t t_fine = 0;
+    bmp280.temp_raw = bmp280_calc_temp(&bmp280.t_fine, adc_T);
+    bmp280.pres_raw = bmp280_calc_press(t_fine, adc_P);
+    bmp280.temp = bmp280.temp_raw / 100.0f;
+    bmp280.pres = bmp280.pres_raw / 100.0f;
     return 0;
+}
+
+static int32_t bmp280_calc_temp(uint32_t *t_fine, BMP280_S32_t adc_T)
+{
+    BMP280_S32_t var1, var2, T;
+    var1 = ((((adc_T >> 3) - ((BMP280_S32_t)bmp280.calib.dig_T1 << 1))) * ((BMP280_S32_t)bmp280.calib.dig_T2)) >> 11;
+    var2 = (((((adc_T >> 4) - ((BMP280_S32_t)bmp280.calib.dig_T1)) * ((adc_T >> 4) - ((BMP280_S32_t)bmp280.calib.dig_T1))) >> 12) * ((BMP280_S32_t)bmp280.calib.dig_T3)) >> 14;
+    *t_fine = var1 + var2;
+    T = (*t_fine * 5 + 128) >> 8;
+    return T;
+}
+
+static uint32_t bmp280_calc_press(uint32_t t_fine, BMP280_S32_t adc_P)
+{
+    BMP280_S32_t var1, var2;
+    BMP280_U32_t p;
+    var1 = (((BMP280_S32_t)t_fine) >> 1) - (BMP280_S32_t)64000;
+    var2 = (((var1 >> 2) * (var1 >> 2)) >> 11) * ((BMP280_S32_t)bmp280.calib.dig_P6);
+    var2 = var2 + ((var1 * ((BMP280_S32_t)bmp280.calib.dig_P5)) << 1);
+    var2 = (var2 >> 2) + (((BMP280_S32_t)bmp280.calib.dig_P4) << 16);
+    var1 = (((bmp280.calib.dig_P3 * (((var1 >> 2) * (var1 >> 2)) >> 13)) >> 3) + ((((BMP280_S32_t)bmp280.calib.dig_P2) * var1) >> 1)) >> 18;
+    var1 = ((((32768 + var1)) * ((BMP280_S32_t)bmp280.calib.dig_P1)) >> 15);
+    if (var1 == 0)
+    {
+        return 0; // avoid exception caused by division by zero
+    }
+    p = (((BMP280_U32_t)(((BMP280_S32_t)1048576) - adc_P) - (var2 >> 12))) * 3125;
+    if (p < 0x80000000)
+    {
+        p = (p << 1) / ((BMP280_U32_t)var1);
+    }
+    else
+    {
+        p = (p / (BMP280_U32_t)var1) * 2;
+    }
+    var1 = (((BMP280_S32_t)bmp280.calib.dig_P9) * ((BMP280_S32_t)(((p >> 3) * (p >> 3)) >> 13))) >> 12;
+    var2 = (((BMP280_S32_t)(p >> 2)) * ((BMP280_S32_t)bmp280.calib.dig_P8)) >> 13;
+    p = (BMP280_U32_t)((BMP280_S32_t)p + ((var1 + var2 + bmp280.calib.dig_P7) >> 4));
+    return p;
 }
