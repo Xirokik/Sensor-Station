@@ -19,6 +19,7 @@ void app_step(void)
 {
     if (loop_take_step())
     {
+        bmp280_update();
         //display_step();
     }
 }
