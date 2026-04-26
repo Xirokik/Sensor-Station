@@ -6,12 +6,14 @@
 #include "encoder_driver.h"
 #include "display.h"
 #include "bmp280.h"
+#include "console_app.h"
 
 void app_init(void)
 {
     //display_init();
     encoder_init();
     bmp280_init();
+    console_app_init();
     loop_init();
 }
 
@@ -20,6 +22,7 @@ void app_step(void)
     if (loop_take_step())
     {
         bmp280_update();
+        console_app_step();
         //display_step();
     }
 }

@@ -8,6 +8,7 @@
 #include "stdbool.h"
 
 #include "console_driver.h"
+#include "bmp280.h"
 
 // Reset
 #define CONSOLE_RESET       	"\033[0m"
@@ -42,6 +43,8 @@
 
 #define BUFFOR_SIZE 1024
 
+#define CONSOLE_REDRAW_PERIOD_STEPS 30U
+
 typedef enum
 {
 	CONSOLE_MENU = 0,
@@ -55,8 +58,7 @@ static char buf[BUFFOR_SIZE];
 static char *p_buf = buf;
 static bool redraw = false;
 static bool init_ok;
-
-static bool test_flag = false;
+static uint32_t redraw_step_cnt;
 
 static void screen_handle(uint8_t cmd);
 static void screen_draw(void);
@@ -110,6 +112,21 @@ void console_app_step(void)
 		screen_handle(character);
 	}
 
+if (console_screen != CONSOLE_MENU)
+{
+    redraw_step_cnt++;
+
+    if (redraw_step_cnt >= CONSOLE_REDRAW_PERIOD_STEPS)
+    {
+        redraw_step_cnt = 0;
+        redraw = true;
+    }
+}
+else
+{
+    redraw_step_cnt = 0;
+}
+
     if (redraw)
     {
     	screen_draw();
@@ -140,18 +157,6 @@ static void screen_handle(uint8_t cmd)
                 case '0':
                     console_screen = CONSOLE_MENU;
                     break;
-
-                case 'w':
-                	test_flag = true;
-                	break;
-
-                case 's':
-                	test_flag = false;
-                	break;
-
-                case 't':
-                	test_flag = !test_flag;
-                	break;
 
                 default:
                     redraw = false;
@@ -196,8 +201,11 @@ static void screen_draw(void)
 		case CONSOLE_SCREEN1:
 			snprintf(p_buf, console_buf_left(), CONSOLE_CLEAR_SCREEN CONSOLE_CURSOR_HOME CONSOLE_RED"EKRAN 1\r\n"
 				CONSOLE_WHITE "MENU: press 0\r\n"
-				"Test flag %s",
-				test_flag ? CONSOLE_GREEN"ON" : CONSOLE_RED"OFF");
+				"Temperatura %.2f C\r\n"
+				"Cisnienie %.2f hPa",
+				bmp280_get_temp_C(),
+				bmp280_get_pres_hPa()
+			);
 			p_buf+=strlen(p_buf);
 			break;
 
