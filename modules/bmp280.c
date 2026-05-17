@@ -29,6 +29,7 @@ typedef struct
 {
     uint8_t mode;
     bmp280_calib_data_t calib;
+    uint8_t raw_data[6];
     BMP280_S32_t t_fine;
     BMP280_S32_t temp_raw;
     BMP280_U32_t pres_Pa;
@@ -108,34 +109,40 @@ void bmp280_init(void)
     {
         return;
     }
+
+    if (bmp280_port_read_it(BMP280_REG_PRESS_MSB, bmp280.raw_data, 6) != 0)
+    {
+        return;
+    }
+    
     bmp280.init_ok = true;
     return;
 }
 
 void bmp280_update(void)
 {
-    if (!bmp280.init_ok)
-    {
-        return;
-    }
-    uint8_t raw[6];
-    if (bmp280_port_read(BMP280_REG_PRESS_MSB, raw, 6) != 0)
+    if (!bmp280.init_ok || !bmp280_port_is_ready())
     {
         return;
     }
 
-    int32_t adc_P = (int32_t)(((uint32_t)raw[0] << 12) |
-                              ((uint32_t)raw[1] << 4) |
-                              ((uint32_t)raw[2] >> 4));
+    int32_t adc_P = (int32_t)(((uint32_t)bmp280.raw_data[0] << 12) |
+                              ((uint32_t)bmp280.raw_data[1] << 4) |
+                              ((uint32_t)bmp280.raw_data[2] >> 4));
 
-    int32_t adc_T = (int32_t)(((uint32_t)raw[3] << 12) |
-                              ((uint32_t)raw[4] << 4) |
-                              ((uint32_t)raw[5] >> 4));
+    int32_t adc_T = (int32_t)(((uint32_t)bmp280.raw_data[3] << 12) |
+                              ((uint32_t)bmp280.raw_data[4] << 4) |
+                              ((uint32_t)bmp280.raw_data[5] >> 4));
 
     bmp280.temp_raw = bmp280_calc_temp(adc_T);
     bmp280.pres_Pa = bmp280_calc_press(adc_P);
     bmp280.temp_C = bmp280.temp_raw / 100.0f;
     bmp280.pres_hPa = bmp280.pres_Pa / 100.0f;
+
+    if (bmp280_port_read_it(BMP280_REG_PRESS_MSB, bmp280.raw_data, 6) != 0)
+    {
+        return;
+    }
 }
 
 bool bmp280_is_init(void)
