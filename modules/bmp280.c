@@ -126,6 +126,12 @@ void bmp280_update(void)
         return;
     }
 
+    if (!bmp280_port_last_transfer_ok())
+    {
+        (void)bmp280_port_read_it(BMP280_REG_PRESS_MSB, bmp280.raw_data, 6);
+        return;
+    }
+
     int32_t adc_P = (int32_t)(((uint32_t)bmp280.raw_data[0] << 12) |
                               ((uint32_t)bmp280.raw_data[1] << 4) |
                               ((uint32_t)bmp280.raw_data[2] >> 4));
