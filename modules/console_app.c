@@ -9,6 +9,7 @@
 
 #include "console_driver.h"
 #include "bmp280.h"
+#include "hc_sr04_driver.h"
 
 // Reset
 #define CONSOLE_RESET       	"\033[0m"
@@ -49,7 +50,8 @@ typedef enum
 {
 	CONSOLE_MENU = 0,
 	CONSOLE_SCREEN1 = 1,
-	CONSOLE_ERROR = 2 // TBD
+	CONSOLE_SCREEN2 = 2,
+	CONSOLE_ERROR = 3 // TBD
 } console_screen_t;
 
 static console_screen_t console_screen = CONSOLE_MENU;
@@ -85,8 +87,9 @@ void console_app_init(void)
 	}
     // Draw Menu
     snprintf(p_buf, console_buf_left(), CONSOLE_CLEAR_SCREEN CONSOLE_CURSOR_HOME CONSOLE_RED"MENU\r\n"
-        CONSOLE_WHITE "SCREEN 1: press 1");
-    p_buf += strlen(p_buf);
+					CONSOLE_WHITE "SCREEN 1: press 1\r\n"
+					"SCREEN 2: press 2 \r\n");
+	p_buf+=strlen(p_buf);
     uint32_t len = p_buf - buf;
     err = console_driver_send(buf, len);
     p_buf = buf;
@@ -144,7 +147,9 @@ static void screen_handle(uint8_t cmd)
                 case '1':
                     console_screen = CONSOLE_SCREEN1;
                     break;
-
+				case '2':
+					console_screen = CONSOLE_SCREEN2;
+					break;
                 default:
                     redraw = false;
                     break;
@@ -152,6 +157,20 @@ static void screen_handle(uint8_t cmd)
 		break;
 
 		case CONSOLE_SCREEN1:
+            switch (cmd)
+            {
+                case '0':
+                    console_screen = CONSOLE_MENU;
+                    break;
+
+                default:
+                    redraw = false;
+                    break;
+            }
+
+			break;
+
+		case CONSOLE_SCREEN2:
             switch (cmd)
             {
                 case '0':
@@ -194,7 +213,8 @@ static void screen_draw(void)
 	{
 		case CONSOLE_MENU:
 			snprintf(p_buf, console_buf_left(), CONSOLE_CLEAR_SCREEN CONSOLE_CURSOR_HOME CONSOLE_RED"MENU\r\n"
-					CONSOLE_WHITE "SCREEN 1: press 1\r\n");
+					CONSOLE_WHITE "SCREEN 1: press 1\r\n"
+					"SCREEN 2: press 2 \r\n");
 			p_buf+=strlen(p_buf);
 			break;
 
@@ -208,7 +228,25 @@ static void screen_draw(void)
 			);
 			p_buf+=strlen(p_buf);
 			break;
+		case CONSOLE_SCREEN2:
+			{
+				snprintf(p_buf, console_buf_left(), CONSOLE_CLEAR_SCREEN CONSOLE_CURSOR_HOME CONSOLE_RED"EKRAN 2\r\n"
+				CONSOLE_WHITE "MENU: press 0\r\n"
+				);
+				p_buf+=strlen(p_buf);
 
+				float dist = hc_sr04_driver_get_dist();
+				if (dist < 0.0f)
+				{
+				    snprintf(p_buf, console_buf_left(), "Distance: invalid\r\n");
+				}
+				else
+				{
+				    snprintf(p_buf, console_buf_left(), "Distance: %.2f cm\r\n", dist);
+				}
+				p_buf+=strlen(p_buf);
+				break;
+			}
 		default:
 			snprintf(p_buf, console_buf_left(), CONSOLE_CLEAR_SCREEN CONSOLE_CURSOR_HOME CONSOLE_RED"ERROR\r\n"
 				CONSOLE_WHITE "Return to MENU press r");

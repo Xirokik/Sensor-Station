@@ -56,7 +56,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     libs/ssd1306/ssd1306.c
     libs/ssd1306/ssd1306_fonts.c
     libs/ssd1306/ssd1306_tests.c
-    modules/hc_sr04.c
+    modules/hc_sr04_driver.c
 )
 
 # Add include paths

@@ -1,22 +1,32 @@
-#include "hc_sr04.h"
+#include "hc_sr04_driver.h"
 
+#include "stdint.h"
 #include "tim.h"
+
+#define HC_SR04_MAX_DIST        200.0f
+#define HC_SR04_MIN_DIST        2.0f
+#define HC_SR04_INVALID_DIST   -1.0f
 
 volatile static uint32_t val_ch1;
 volatile static uint32_t val_ch2;
 volatile static uint32_t channel_diff;
 
-void hc_sr04_init(void)
+void hc_sr04_driver_init(void)
 {
     HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1);
     HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_2);
     HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3);
 }
 
-float hc_sr04_get_dist(void)
+float hc_sr04_driver_get_dist(void)
 {
-    float act_value = (float)(channel_diff) / 58.0f;
-    return act_value;
+    float distance_cm = (float)(channel_diff) / 58.0f;
+    if (distance_cm > HC_SR04_MAX_DIST || distance_cm < HC_SR04_MIN_DIST)
+    {
+        distance_cm = HC_SR04_INVALID_DIST;
+    }
+    
+    return distance_cm;
 }
 
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
